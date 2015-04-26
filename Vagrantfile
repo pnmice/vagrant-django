@@ -8,5 +8,13 @@ Vagrant.configure(2) do |config|
 
 
   config.vm.network :private_network, ip: "192.168.111.4"
-
+  config.vm.provision "ansible" do |ansible|
+      ansible.playbook = "ansible/vagrant.yml"
+      ansible.inventory_path = "ansible/inventories/production"
+      ansible.limit = 'all'
+      ansible.extra_vars = {
+        ansible_ssh_user: 'vagrant'
+      }
+  end	
+	
 end

@@ -1,0 +1,43 @@
+---
+  - name: update apt packages
+    sudo: yes
+    apt: update_cache=yes
+
+  - name: install essential packages
+    sudo: yes
+    apt: name={{item}} state=present
+    with_items:
+      - build-essential
+      - python-virtualenv
+      - nginx
+      - python-dev
+      - python
+
+  - name: create env
+    shell: virtualenv uwsgi 
+
+  - name: install django and uwsgi
+    pip: name={{item}} virtualenv=~/uwsgi
+    with_items:
+      - Django
+      - uwsgi
+
+  - name: copy mysite
+    synchronize: src=roles/django/templates/ dest=~/uwsgi/
+
+  - name: change config nginx
+    sudo: yes
+    file: src=/home/{{home_dir}}/uwsgi/mysite/mysite_nginx.conf dest=/etc/nginx/sites-enabled/mysite_nginx.conf state=link
+    notify:
+      - restart nginx
+
+  - name: start uwsgi
+    shell: . /home/{{home_dir}}/uwsgi/bin/activate && \
+           /home/{{home_dir}}/uwsgi/bin/uwsgi \
+           --socket /home/{{home_dir}}/uwsgi/mysite/mysite.sock \
+           --module mysite.wsgi --chmod-socket=666 --processes=10 \
+           --env DJANGO_SETTINGS_MODULE=mysite.settings --master \
+           --pidfile=/tmp/mysite-master.pid --harakiri=20 \
+           --max-requests=5000 --vacuum --home=/home/{{home_dir}}/uwsgi \
+           --daemonize=/home/{{home_dir}}/uwsgi/mysite/mysite.log \
+           --chdir=/home/{{home_dir}}/uwsgi/mysite
